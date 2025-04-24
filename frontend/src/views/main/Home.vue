@@ -108,9 +108,9 @@
       :deep(.el-sub-menu__title) {
         height: 50px;
         line-height: 50px;
-        color: #303133;
+        // color: #303133;
         font-size: 14px;
-        font-weight: bold;
+        // font-weight: bold;
         transition: all 0.3s; // 添加过渡效果
         
         &:hover {

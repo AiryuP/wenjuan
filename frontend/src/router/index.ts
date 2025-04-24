@@ -6,6 +6,7 @@ import {
     createWebHashHistory,
   } from "vue-router";
   import routes from "@/router/router.default"
+  import { getToken } from "@/utils/auth"
 
   const autoRouters = () => {
     // @ts-ignore 读取views/page下的所有vue文件,并将其转换为路由
@@ -35,6 +36,25 @@ import {
   const router: Router = createRouter({
     history: createWebHistory(),
     routes: routes
+  });
+  
+  // 全局前置守卫
+  router.beforeEach((to, from, next) => {
+    const token = getToken();
+    // 判断该路由是否需要登录权限
+    if (to.meta.isLogin) {
+      if (token) {
+        next();
+      } else {
+        // 未登录，跳转到登录页面
+        next({
+          path: '/login',
+          query: { redirect: to.fullPath } // 将要跳转的路由path作为参数，登录成功后跳转到该路由
+        });
+      }
+    } else {
+      next();
+    }
   });
   
   export default router;

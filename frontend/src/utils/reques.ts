@@ -13,6 +13,11 @@ instance.interceptors.request.use(
   // AxiosRequestConfig 类型CreateAxiosDefaults不能赋值给AxiosRequestConfig
   (config: InternalAxiosRequestConfig) => {
     // 在请求发送之前可以做一些处理，比如添加请求头等
+    // 从localStorage获取token并添加到请求头
+    const token = localStorage.getItem('wenjuan_token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
     return config;
   },
   (error: any) => {
@@ -25,6 +30,10 @@ instance.interceptors.response.use(
   (response: AxiosResponse) => {
     const { data } = response;
     if (data.code === 401) {
+      // token过期或无效，清除本地token并跳转到登录页
+      localStorage.removeItem('wenjuan_token');
+      window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+      return Promise.reject(data);
     }
     if (data.code !== 200) {
       return Promise.reject(data);
