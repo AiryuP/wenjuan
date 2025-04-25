@@ -7,6 +7,7 @@ import type {
 const instance: AxiosInstance = axios.create({
   baseURL: "", // 基础 URL
   timeout: 50000, // 请求超时时间
+  withCredentials: true, // 允许跨域请求携带凭证
 });
 // 请求拦截器
 instance.interceptors.request.use(
@@ -28,6 +29,7 @@ instance.interceptors.request.use(
 // 响应拦截器
 instance.interceptors.response.use(
   (response: AxiosResponse) => {
+    console.log('原始响应:', response);
     const { data } = response;
     if (data.code === 401) {
       // token过期或无效，清除本地token并跳转到登录页
@@ -43,6 +45,16 @@ instance.interceptors.response.use(
   },
   (error: any) => {
     // 对响应错误做点什么
+    console.error('请求错误:', error);
+    if (error.response) {
+      console.error('错误状态码:', error.response.status);
+      console.error('错误数据:', error.response.data);
+    } else if (error.request) {
+      console.error('未收到响应:', error.request);
+    } else {
+      console.error('请求配置错误:', error.message);
+    }
+    console.error('请求配置:', error.config);
     return Promise.reject(error);
   }
 );

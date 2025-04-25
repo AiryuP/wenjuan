@@ -77,7 +77,7 @@ const loginRules = {
 // 获取验证码
 const refreshCaptcha = () => {
   // 这里使用时间戳作为参数，确保每次请求都是新的验证码
-  captchaUrl.value = `http://localhost:4124/api/captcha?t=${new Date().getTime()}`
+  captchaUrl.value = `/api/login/captcha?t=${new Date().getTime()}`
   // 清空验证码输入框
   loginForm.captcha = ''
 }
@@ -98,7 +98,7 @@ const handleLogin = async () => {
         })
         
         // 调用登录接口
-        const response = await axios.post('http://localhost:4124/api/login', {
+        const response = await axios.post('http://localhost:4124/api/login/login', {
           username: loginForm.username,
           password: loginForm.password,
           captcha: loginForm.captcha

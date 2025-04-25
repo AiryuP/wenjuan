@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
+import { SurveyCategoryModule } from './survey-category/survey-category.module';
 
 @Module({
   imports: [
@@ -29,6 +30,8 @@ import { AuthModule } from './auth/auth.module';
     }),
     // 导入认证模块
     AuthModule,
+    // 导入问卷分类模块
+    SurveyCategoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

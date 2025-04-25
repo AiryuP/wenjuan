@@ -18,16 +18,18 @@
               <!-- <el-icon><i class="el-icon-document"></i></el-icon> -->
               问卷管理
             </template>
-            <el-menu-item index="1-1">问卷制作</el-menu-item>
-            <el-menu-item index="1-2">问卷管理</el-menu-item>
+            <el-menu-item index="1-1" @click="goPath('/survey/make')">问卷制作</el-menu-item>
+            <!-- <el-menu-item index="1-2">问卷管理</el-menu-item> -->
+            <el-menu-item index="1-3" @click="goPath('/survey/manage')">
+              问卷分类管理
+            </el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="2">
             <template #title>
               <!-- <el-icon><i class="el-icon-setting"></i></el-icon> -->
               系统管理
             </template>
-            <el-menu-item index="2-1">问卷制作</el-menu-item>
-            <el-menu-item index="2-2">问卷管理</el-menu-item>
+            <el-menu-item index="2-1">用户管理</el-menu-item>
           </el-sub-menu>
         </el-menu>
       </div>
@@ -43,6 +45,19 @@
 </template>
 
 <script setup lang="ts">
+
+import { ref } from 'vue'
+import { useRoute,useRouter } from 'vue-router'
+const router = useRouter() 
+
+const goPath = (path: string) => {
+  router.push({
+    path: path,
+  })
+}
+
+
+
 
 </script>
 
