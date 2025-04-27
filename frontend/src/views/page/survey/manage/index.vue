@@ -90,7 +90,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, FormInstance } from 'element-plus'
-import axios from '@/utils/reques'
+import http from '@/utils/http'
 
 interface CategoryItem {
   id: number
@@ -136,7 +136,7 @@ const fetchCategoryList = () => {
   loading.value = true
   const api = `/api/survey-categories`
   
-  axios.get(api)
+  http.get(api)
     .then((res) => {
       categoryList.value = res.data || []
       total.value = res.data?.length || 0
@@ -171,7 +171,7 @@ const handleEdit = (row: CategoryItem) => {
 
 // 删除分类
 const handleDelete = (id: number) => {
-  axios.delete(`/api/survey-categories/${id}`)
+  http.delete(`/api/survey-categories/${id}`)
     .then(() => {
       ElMessage.success('删除成功')
       fetchCategoryList()
@@ -192,7 +192,7 @@ const submitForm = () => {
       
       if (isEdit.value) {
         // 编辑
-        axios.patch(`/api/survey-categories/${form.id}`, {
+        http.patch(`/api/survey-categories/${form.id}`, {
           name: form.name,
           description: form.description,
           isActive: form.isActive
@@ -217,7 +217,7 @@ const submitForm = () => {
         }
         console.log('提交的新增数据:', postData)
         
-        axios.post('/api/survey-categories', postData)
+        http.post('/api/survey-categories', postData)
         .then((res) => {
           console.log('新增成功响应:', res)
           ElMessage.success('创建成功')

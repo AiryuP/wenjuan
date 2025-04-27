@@ -165,6 +165,12 @@
                 </el-button>
               </el-tooltip>
               
+              <el-tooltip content="数据分析" placement="top">
+                <el-button size="small" type="primary" plain @click="analysisSurvey(scope.row)">
+                  <el-icon><DataAnalysis /></el-icon> 分析
+                </el-button>
+              </el-tooltip>
+              
               <el-tooltip :content="scope.row.isCollecting ? '停止收集' : '开始收集'" placement="top">
                 <el-button 
                   size="small" 
@@ -219,9 +225,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
+import http from '@/utils/http'
 import { useRouter } from 'vue-router'
 import { 
   Search, 
@@ -238,7 +244,8 @@ import {
   Mute,
   Document,
   DocumentRemove,
-  List
+  List,
+  DataAnalysis
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -303,7 +310,7 @@ const formatDate = (dateString: string) => {
 
 // 获取分类列表
 const fetchCategories = () => {
-  axios.get('/api/survey-categories')
+  http.get('/api/survey-categories')
     .then(response => {
       // 适配各种可能的响应结构
       let categoriesData = null;
@@ -355,31 +362,28 @@ const fetchSurveys = () => {
     pageNum: currentPage.value,
     pageSize: pageSize.value
   }
-   
   
-  // 模拟API调用（后续接入真实API）
-  setTimeout(() => {
-    try {
-      // 模拟数据
-      const mockData = Array(total.value > pageSize.value ? pageSize.value : total.value).fill(0).map((_, index) => ({
-        id: index + 1,
-        title: `测试问卷${index + 1}`,
-        categoryId: Math.floor(Math.random() * 3) + 1,
-        status: Math.floor(Math.random() * 3),
-        isCollecting: Math.random() > 0.5,
-        respondentCount: Math.floor(Math.random() * 500),
-        createdAt: new Date(Date.now() - Math.floor(Math.random() * 90) * 24 * 60 * 60 * 1000).toISOString(),
-        tags: [Math.floor(Math.random() * 6) + 1]
-      }))
-      
-      surveyList.value = mockData
-      loading.value = false
-    } catch (error) {
-      console.error('处理数据时出错:', error);
-      loading.value = false;
+  http.get('/api/surveys', { params })
+    .then(response => {
+      const res = response.data;
+      if (res.code === 200) {
+        surveyList.value = res.data.items || [];
+        total.value = res.data.total || 0;
+      } else {
+        ElMessage.error(res.message || '获取问卷列表失败');
+        surveyList.value = [];
+        total.value = 0;
+      }
+    })
+    .catch(error => {
+      console.error('获取问卷列表失败:', error);
+      ElMessage.error('获取问卷列表失败');
       surveyList.value = [];
-    }
-  }, 500)
+      total.value = 0;
+    })
+    .finally(() => {
+      loading.value = false;
+    });
 }
 
 // 查询
@@ -425,10 +429,21 @@ const previewSurvey = (row: any) => {
 
 // 切换收集状态
 const toggleCollectStatus = (row: any) => {
-  const newStatus = !row.isCollecting
-  ElMessage.success(`问卷已${newStatus ? '开始' : '停止'}收集`)
-  // 实际应调用API更新状态
-  row.isCollecting = newStatus
+  http.post(`/api/surveys/${row.id}/toggle-collect`)
+    .then(response => {
+      const res = response.data;
+      if (res.code === 200) {
+        const newStatus = !row.isCollecting;
+        row.isCollecting = newStatus;
+        ElMessage.success(`问卷已${newStatus ? '开始' : '停止'}收集`);
+      } else {
+        ElMessage.error(res.message || '操作失败');
+      }
+    })
+    .catch(error => {
+      console.error('切换收集状态失败:', error);
+      ElMessage.error('切换收集状态失败');
+    });
 }
 
 // 确认删除
@@ -442,10 +457,21 @@ const confirmDelete = (row: any) => {
       type: 'warning'
     }
   ).then(() => {
-    // 实际应调用API删除问卷
-    ElMessage.success('删除成功')
-    fetchSurveys()
-  }).catch(() => {})
+    http.delete(`/api/surveys/${row.id}`)
+      .then(response => {
+        const res = response.data;
+        if (res.code === 200) {
+          ElMessage.success('删除成功');
+          fetchSurveys();
+        } else {
+          ElMessage.error(res.message || '删除失败');
+        }
+      })
+      .catch(error => {
+        console.error('删除问卷失败:', error);
+        ElMessage.error('删除问卷失败');
+      });
+  }).catch(() => {});
 }
 
 // 获取分类名称
@@ -475,6 +501,14 @@ const getStatusType = (status: number) => {
     2: 'warning'
   }
   return typeMap[status] || 'info'
+}
+
+// 分析问卷
+const analysisSurvey = (row: any) => {
+  // 跳转到分析页面
+  router.push({
+    path: `/survey/analysis/${row.id}`,
+  });
 }
 
 onMounted(() => {

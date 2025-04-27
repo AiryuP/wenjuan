@@ -369,7 +369,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, defineComponent } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 // 使用组件导入方式
@@ -729,23 +729,40 @@ const saveSurvey = () => {
   
   const surveyData = {
     ...surveyInfo,
-    questions: questions.value
+    questions: questions.value,
+    status: surveyInfo.isPublished ? 1 : 0,  // 设置状态
+    isCollecting: surveyInfo.isPublished  // 如果发布则自动开始收集
   };
   
   const api = isEdit ? `/api/surveys/${surveyId}` : '/api/surveys';
   const method = isEdit ? 'patch' : 'post';
   
+  // 使用普通的加载状态显示
+  const loadingInstance = ElLoading.service({
+    lock: true,
+    text: '保存中...',
+    background: 'rgba(0, 0, 0, 0.7)'
+  });
+  
   axios[method](api, surveyData)
     .then(res => {
-      ElMessage.success(isEdit ? '问卷更新成功' : '问卷创建成功');
-      if (!isEdit && res.data && res.data.data && res.data.data.id) {
-        // 新建成功后，重定向到编辑模式
-        router.replace(`/survey/editor/${res.data.data.id}`);
+      if (res.data && res.data.code === 200) {
+        ElMessage.success(isEdit ? '问卷更新成功' : '问卷创建成功');
+        if (!isEdit && res.data.data && res.data.data.id) {
+          // 新建成功后，重定向到编辑模式
+          router.replace(`/survey/editor/${res.data.data.id}`);
+        }
+      } else {
+        ElMessage.error(res.data?.message || '保存失败');
       }
     })
     .catch(err => {
       console.error('保存问卷失败', err);
-      ElMessage.error('保存问卷失败');
+      ElMessage.error(err.response?.data?.message || '保存问卷失败');
+    })
+    .finally(() => {
+      // 关闭加载提示
+      loadingInstance.close();
     });
 };
 

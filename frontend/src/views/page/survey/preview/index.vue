@@ -137,9 +137,13 @@ interface SurveyData {
   id: string;
   title: string;
   description: string;
-  categoryId?: string;
+  categoryId?: string | number;
   categoryName?: string;
   isPublished?: boolean;
+  status?: number;
+  isCollecting?: boolean;
+  respondentCount?: number;
+  category?: { id: number; name: string; };
   questions: SurveyQuestion[];
 }
 
@@ -189,12 +193,14 @@ const fetchSurvey = () => {
     // 从API获取数据
     axios.get(`/api/surveys/${surveyId}`)
       .then(res => {
-        const data = res.data;
-        if (data && data.code === 200) {
-          Object.assign(survey, data.data);
+        if (res.data && res.data.code === 200) {
+          Object.assign(survey, res.data.data);
           
           // 如果有分类ID但没有分类名称，尝试获取分类名称
-          if (survey.categoryId && !survey.categoryName) {
+          if (survey.categoryId && !survey.categoryName && survey.category) {
+            survey.categoryName = survey.category.name;
+            loading.value = false;
+          } else if (survey.categoryId && !survey.categoryName) {
             fetchCategoryName(survey.categoryId);
           } else {
             loading.value = false;
@@ -202,20 +208,20 @@ const fetchSurvey = () => {
           
           initAnswers();
         } else {
-          ElMessage.error('获取问卷数据失败');
+          ElMessage.error(res.data?.message || '获取问卷数据失败');
           loading.value = false;
         }
       })
       .catch(err => {
         console.error('获取问卷数据失败', err);
-        ElMessage.error('获取问卷数据失败');
+        ElMessage.error(err.response?.data?.message || '获取问卷数据失败');
         loading.value = false;
       });
   }
 };
 
 // 获取分类名称
-const fetchCategoryName = (categoryId: string) => {
+const fetchCategoryName = (categoryId: string | number) => {
   axios.get(`/api/survey-categories/${categoryId}`)
     .then(res => {
       const data = res.data;
@@ -226,7 +232,7 @@ const fetchCategoryName = (categoryId: string) => {
     .catch(err => {
       console.error('获取分类名称失败', err);
     })
-    .then(() => {
+    .finally(() => {
       // 完成请求后设置loading状态
       loading.value = false;
     });
@@ -280,7 +286,7 @@ const submitSurvey = () => {
   
   // 构建提交数据
   const submitData = {
-    surveyId: survey.id,
+    surveyId: Number(survey.id), // 确保ID是数字类型
     answers: Object.entries(answers).map(([questionId, answer]) => {
       return {
         questionId,
@@ -299,19 +305,23 @@ const submitSurvey = () => {
   }
   
   // 提交到API
-  axios.post('/api/survey-responses', submitData)
+  axios.post('/api/surveys/responses', submitData)
     .then(res => {
-      ElMessage.success('提交成功，感谢您的参与！');
-      resetAnswers();
-      setTimeout(() => {
-        goBack();
-      }, 1500);
+      if (res.data && res.data.code === 200) {
+        ElMessage.success('提交成功，感谢您的参与！');
+        resetAnswers();
+        setTimeout(() => {
+          goBack();
+        }, 1500);
+      } else {
+        ElMessage.error(res.data?.message || '提交失败');
+      }
     })
     .catch(err => {
       console.error('提交问卷失败', err);
-      ElMessage.error('提交问卷失败');
+      ElMessage.error(err.response?.data?.message || '提交问卷失败');
     })
-    .then(() => {
+    .finally(() => {
       // 完成请求后设置submitting状态
       submitting.value = false;
     });

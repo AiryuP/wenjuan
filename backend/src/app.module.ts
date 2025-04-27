@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { SurveyCategoryModule } from './survey-category/survey-category.module';
+import { SurveyModule } from './survey/survey.module';
 
 @Module({
   imports: [
@@ -32,6 +33,8 @@ import { SurveyCategoryModule } from './survey-category/survey-category.module';
     AuthModule,
     // 导入问卷分类模块
     SurveyCategoryModule,
+    // 导入问卷模块
+    SurveyModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -97,6 +97,12 @@ wenjuan/
   - 实时预览编辑中的问卷
   - 支持从列表打开特定问卷进行预览
   - 预览模式下可查看提交数据格式
+- 问卷数据分析
+  - 回复时间趋势分析
+  - 不同题型的数据可视化展示
+  - 单选/多选题的选项分布统计
+  - 评分题的分值分布与平均分统计
+  - 文本题的回复内容汇总
 
 ### 计划实现
 - 问卷创建与编辑功能
@@ -110,14 +116,14 @@ wenjuan/
   - 生成分享链接
   - 二维码分享
 - 问卷数据收集与统计
-  - 实时数据统计
   - 数据导出功能
+  - 更多数据可视化图表
 - 数据可视化展示
-  - 图表展示
-  - 数据分析报告
+  - 自定义报表功能
+  - 交互式数据分析
 - 后端API开发
-  - 问卷存储
-  - 数据处理
+  - 问卷存储优化
+  - 数据处理性能优化
 
 ## 安装与运行
 
@@ -173,26 +179,46 @@ yarn preview
 
 ### API请求
 
-使用 `src/utils/reques.ts` 中封装的Axios实例进行API请求，已配置了请求/响应拦截器处理认证和错误情况。
+使用 `src/utils/http.ts` 中封装的Axios实例进行API请求，已配置了请求/响应拦截器处理认证和错误情况。
 
 ```typescript
 // 示例用法
-import request from '@/utils/reques';
+import http from '@/utils/http';
 
 // GET请求
-request.get('/api/surveys').then(res => {
-  console.log(res);
+http.get('/api/surveys').then(res => {
+  console.log(res.data);
 }).catch(err => {
   console.error(err);
 });
 
 // POST请求
-request.post('/api/surveys', { title: '新问卷' }).then(res => {
-  console.log(res);
+http.post('/api/surveys', { title: '新问卷' }).then(res => {
+  console.log(res.data);
 }).catch(err => {
   console.error(err);
 });
+
+// 使用async/await
+async function fetchData() {
+  try {
+    const res = await http.get('/api/surveys');
+    return res.data;
+  } catch (error) {
+    console.error('获取数据失败', error);
+    return [];
+  }
+}
 ```
+
+http模块主要功能：
+- 统一的API调用方式
+- 自动携带JWT Token认证
+- 响应数据统一处理
+- 全局错误处理与提示
+- 登录失效自动跳转登录页
+
+详细说明请查看 `src/utils/README.md`。
 
 ### API响应格式
 
@@ -290,6 +316,350 @@ axios.interceptors.request.use(config => {
 - `GET /api/surveys` - 获取问卷列表
 - `GET /api/surveys/:id` - 获取指定问卷
 - `GET /api/surveys/:id/preview` - 预览指定问卷
+
+## 后端API接口
+
+### 问卷管理相关接口
+
+#### 1. 获取问卷列表
+- **URL**: `/api/surveys`
+- **方法**: `GET`
+- **参数**:
+  - `title`: 问卷标题（模糊查询）
+  - `categoryId`: 分类ID
+  - `status`: 问卷状态（0:草稿, 1:已发布, 2:已关闭）
+  - `isCollecting`: 收集状态（true/false）
+  - `tags`: 标签IDs（逗号分隔）
+  - `startDate`: 开始日期
+  - `endDate`: 结束日期
+  - `pageNum`: 页码，默认为1
+  - `pageSize`: 每页数量，默认为10
+- **返回示例**:
+  ```json
+  {
+    "code": 200,
+    "data": {
+      "items": [
+        {
+          "id": 1,
+          "title": "产品满意度调查",
+          "description": "调查用户对产品的满意程度",
+          "status": 1,
+          "isCollecting": true,
+          "respondentCount": 120,
+          "categoryId": 1,
+          "category": {
+            "id": 1,
+            "name": "产品评测"
+          },
+          "questions": [...],
+          "tags": [1, 3],
+          "createdAt": "2023-12-05T08:30:00.000Z",
+          "updatedAt": "2023-12-05T15:45:00.000Z"
+        },
+        // 更多问卷...
+      ],
+      "total": 35
+    },
+    "message": "获取成功"
+  }
+  ```
+
+#### 2. 获取单个问卷详情
+- **URL**: `/api/surveys/{id}`
+- **方法**: `GET`
+- **参数**: 无
+- **返回示例**:
+  ```json
+  {
+    "code": 200,
+    "data": {
+      "id": 1,
+      "title": "产品满意度调查",
+      "description": "调查用户对产品的满意程度",
+      "status": 1,
+      "isCollecting": true,
+      "respondentCount": 120,
+      "categoryId": 1,
+      "category": {
+        "id": 1,
+        "name": "产品评测"
+      },
+      "questions": [
+        {
+          "id": "q1",
+          "type": "radio",
+          "title": "您对我们的产品总体满意度如何？",
+          "required": true,
+          "options": [
+            {"value": "1", "label": "非常满意"},
+            {"value": "2", "label": "满意"},
+            {"value": "3", "label": "一般"},
+            {"value": "4", "label": "不满意"},
+            {"value": "5", "label": "非常不满意"}
+          ]
+        },
+        // 更多问题...
+      ],
+      "tags": [1, 3],
+      "createdAt": "2023-12-05T08:30:00.000Z",
+      "updatedAt": "2023-12-05T15:45:00.000Z"
+    },
+    "message": "获取成功"
+  }
+  ```
+
+#### 3. 创建问卷
+- **URL**: `/api/surveys`
+- **方法**: `POST`
+- **参数**:
+  ```json
+  {
+    "title": "新产品满意度调查",
+    "description": "调查用户对新产品的满意程度",
+    "categoryId": 1,
+    "isPublished": true,
+    "questions": [
+      {
+        "id": "q1",
+        "type": "radio",
+        "title": "您对我们的产品总体满意度如何？",
+        "required": true,
+        "options": [
+          {"value": "1", "label": "非常满意"},
+          {"value": "2", "label": "满意"},
+          {"value": "3", "label": "一般"},
+          {"value": "4", "label": "不满意"},
+          {"value": "5", "label": "非常不满意"}
+        ]
+      },
+      // 更多问题...
+    ],
+    "tags": [1, 3]
+  }
+  ```
+- **返回示例**:
+  ```json
+  {
+    "code": 200,
+    "data": {
+      "id": 5,
+      "title": "新产品满意度调查",
+      "description": "调查用户对新产品的满意程度",
+      "status": 1,
+      "isCollecting": true,
+      "respondentCount": 0,
+      "categoryId": 1,
+      "questions": [...],
+      "tags": [1, 3],
+      "createdAt": "2023-12-10T09:45:00.000Z",
+      "updatedAt": "2023-12-10T09:45:00.000Z"
+    },
+    "message": "创建成功"
+  }
+  ```
+
+#### 4. 更新问卷
+- **URL**: `/api/surveys/{id}`
+- **方法**: `PATCH`
+- **参数**: 同创建问卷
+- **返回示例**:
+  ```json
+  {
+    "code": 200,
+    "data": {
+      "id": 5,
+      "title": "新产品满意度调查(更新版)",
+      "description": "调查用户对新产品的满意程度",
+      "status": 1,
+      "isCollecting": true,
+      "respondentCount": 0,
+      "categoryId": 1,
+      "questions": [...],
+      "tags": [1, 3],
+      "createdAt": "2023-12-10T09:45:00.000Z",
+      "updatedAt": "2023-12-10T10:15:00.000Z"
+    },
+    "message": "更新成功"
+  }
+  ```
+
+#### 5. 删除问卷
+- **URL**: `/api/surveys/{id}`
+- **方法**: `DELETE`
+- **参数**: 无
+- **返回示例**:
+  ```json
+  {
+    "code": 200,
+    "data": null,
+    "message": "删除成功"
+  }
+  ```
+
+#### 6. 切换问卷收集状态
+- **URL**: `/api/surveys/{id}/toggle-collect`
+- **方法**: `POST`
+- **参数**: 无
+- **返回示例**:
+  ```json
+  {
+    "code": 200,
+    "data": {
+      "id": 5,
+      "isCollecting": false,
+      // 其他问卷属性...
+    },
+    "message": "状态切换成功"
+  }
+  ```
+
+### 问卷回复相关接口
+
+#### 1. 提交问卷回复
+- **URL**: `/api/surveys/responses`
+- **方法**: `POST`
+- **参数**:
+  ```json
+  {
+    "surveyId": 5,
+    "answers": [
+      {
+        "questionId": "q1",
+        "answer": "2"
+      },
+      {
+        "questionId": "q2",
+        "answer": ["a", "c"]
+      },
+      {
+        "questionId": "q3",
+        "answer": "这是一段文本回复"
+      },
+      {
+        "questionId": "q4",
+        "answer": 4
+      }
+    ]
+  }
+  ```
+- **返回示例**:
+  ```json
+  {
+    "code": 200,
+    "data": {
+      "id": 120,
+      "surveyId": 5,
+      "answers": [...],
+      "createdAt": "2023-12-10T11:30:00.000Z"
+    },
+    "message": "提交成功"
+  }
+  ```
+
+#### 2. 获取问卷回复列表
+- **URL**: `/api/surveys/{id}/responses`
+- **方法**: `GET`
+- **参数**: 无
+- **返回示例**:
+  ```json
+  {
+    "code": 200,
+    "data": [
+      {
+        "id": 120,
+        "surveyId": 5,
+        "answers": [...],
+        "ipAddress": "192.168.1.1",
+        "userAgent": "Mozilla/5.0...",
+        "createdAt": "2023-12-10T11:30:00.000Z"
+      },
+      // 更多回复...
+    ],
+    "message": "获取成功"
+  }
+  ```
+
+#### 3. 获取问卷数据分析
+- **URL**: `/api/surveys/{id}/analysis`
+- **方法**: `GET`
+- **参数**: 无
+- **返回示例**:
+  ```json
+  {
+    "code": 200,
+    "data": {
+      "surveyInfo": {
+        "id": 1,
+        "title": "产品满意度调查",
+        "description": "了解用户对我们产品的满意程度",
+        "respondentCount": 15
+      },
+      "questionStats": [
+        {
+          "id": "q1",
+          "title": "您的性别是？",
+          "type": "radio",
+          "options": {
+            "1": {
+              "label": "男",
+              "count": 8
+            },
+            "2": {
+              "label": "女",
+              "count": 7
+            }
+          }
+        },
+        {
+          "id": "q2",
+          "title": "您对我们的产品满意度如何？",
+          "type": "rate",
+          "rateDistribution": {
+            "1": 0,
+            "2": 1,
+            "3": 3,
+            "4": 5,
+            "5": 6
+          },
+          "averageRate": 4.1
+        }
+      ],
+      "timeDistribution": [
+        {
+          "date": "2023-10-10",
+          "count": 5
+        },
+        {
+          "date": "2023-10-11",
+          "count": 10
+        }
+      ]
+    },
+    "message": "获取问卷分析数据成功"
+  }
+  ```
+
+## 功能更新记录
+
+### 2024年6月更新
+- 新增问卷数据分析功能
+  - 支持回复时间趋势图表展示
+  - 不同题型的数据可视化分析
+  - 单选/多选题选项分布饼图
+  - 评分题分值分布柱状图
+  - 文本题回复内容展示
+  - 分析数据接口API实现
+
+### 2024年5月更新
+- 问卷预览功能完善
+- 问卷回复收集功能优化
+- 用户体验改进
+  
+### 2024年4月更新
+- 问卷编辑器功能实现
+- 问卷题型多样化支持
+- 分类管理系统上线
 
 ## 贡献指南
 

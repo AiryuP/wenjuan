@@ -12,6 +12,7 @@
     "@types/node": "^20.17.31",
     "@types/uuid": "^10.0.0",
     "axios": "^1.6.8",
+    "echarts": "^5.5.0",
     "element-plus": "^2.9.8",
     "sass": "^1.72.0",
     "sass-loader": "^14.1.1",
