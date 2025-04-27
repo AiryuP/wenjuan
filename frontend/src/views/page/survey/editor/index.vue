@@ -2,27 +2,87 @@
   <div class="survey-editor-container">
     <!-- 顶部工具栏 -->
     <div class="editor-header">
-      <div class="title-section">
-        <el-input
-          v-model="surveyInfo.title"
-          placeholder="请输入问卷标题"
-          class="title-input"
-        />
-        <el-input
-          v-model="surveyInfo.description"
-          type="textarea"
-          :rows="2"
-          placeholder="请输入问卷描述（选填）"
-          class="description-input"
-        />
+      <!-- 输入内容区域 -->
+      <div class="content-section">
+        <!-- 标题和元数据区域 -->
+        <div class="title-meta-row">
+          <el-input
+            v-model="surveyInfo.title"
+            placeholder="请输入问卷标题"
+            class="title-input"
+          />
+          
+          <div class="meta-controls">
+            <div class="category-section">
+              <span class="label">问卷分类：</span>
+              <el-select 
+                v-model="surveyInfo.categoryId" 
+                placeholder="请选择分类" 
+                clearable
+                filterable
+                :loading="categoryLoading"
+                class="category-select"
+              >
+                <el-option
+                  v-for="category in categoryOptions"
+                  :key="category.id"
+                  :label="category.name"
+                  :value="category.id"
+                >
+                  <div style="display: flex; align-items: center;">
+                    <el-icon style="margin-right: 8px; color: #409EFF;"><Folder /></el-icon>
+                    {{ category.name }}
+                  </div>
+                </el-option>
+              </el-select>
+            </div>
+            
+            <div class="publish-section">
+              <span class="label">是否发布：</span>
+              <el-switch
+                v-model="surveyInfo.isPublished"
+                inline-prompt
+                :active-value="true"
+                :inactive-value="false"
+                style="margin-right: 10px;"
+              />
+              <el-tooltip 
+                content="发布后将生成链接供用户填写，可随时取消发布" 
+                placement="top" 
+                effect="light"
+              >
+                <el-icon><QuestionFilled /></el-icon>
+              </el-tooltip>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 描述区域 -->
+        <div class="description-area">
+          <el-input
+            v-model="surveyInfo.description"
+            type="textarea"
+            :rows="2"
+            placeholder="请输入问卷描述（选填）"
+            class="description-input"
+          />
+        </div>
       </div>
-      <div class="button-group">
-        <el-button type="primary" @click="saveSurvey">保存</el-button>
-        <el-button @click="previewSurvey">预览</el-button>
-        <el-button @click="goBack">返回</el-button>
+      
+      <!-- 操作按钮区域 -->
+      <div class="action-section">
+        <el-button @click="goBack">
+          <el-icon><ArrowLeft /></el-icon> 返回
+        </el-button>
+        <el-button @click="previewSurvey" type="info">
+          <el-icon><View /></el-icon> 预览
+        </el-button>
+        <el-button type="primary" @click="saveSurvey">
+          <el-icon><Document /></el-icon> 保存
+        </el-button>
       </div>
     </div>
-
+    
     <!-- 主要编辑区域 -->
     <div class="editor-main">
       <!-- 左侧组件面板 -->
@@ -37,7 +97,7 @@
             @dragstart="handleDragStart($event, type)"
           >
             <div class="component-item-inner">
-              <i :class="type.icon"></i>
+              <el-icon><component :is="type.icon" /></el-icon>
               <span>{{ type.label }}</span>
             </div>
           </div>
@@ -52,133 +112,187 @@
       >
         <div class="question-area-inner">
           <div v-if="questions.length === 0" class="empty-tip">
-            <i class="el-icon-plus"></i>
-            <p>从左侧拖拽组件到此处，或点击添加题目</p>
-            <el-button type="primary" size="small" @click="addNewQuestion('radio')">添加单选题</el-button>
-          </div>
-
-          <div v-for="(question, index) in questions" :key="question.id" class="question-item" :class="{ 'is-active': activeQuestionIndex === index }">
-            <div class="question-drag-handle" @mousedown="selectQuestion(index)">
-              <i class="el-icon-rank"></i>
+            <el-icon class="big-icon"><Plus /></el-icon>
+            <h3>当前问卷还没有题目</h3>
+            <p class="tip-desc">请选择以下题型添加到问卷中</p>
+            
+            <div class="empty-actions">
+              <el-button type="primary" @click="addNewQuestion('radio')">
+                <el-icon><Check /></el-icon> 单选题
+              </el-button>
+              <el-button type="primary" @click="addNewQuestion('checkbox')">
+                <el-icon><Tickets /></el-icon> 多选题
+              </el-button>
+              <el-button type="primary" @click="addNewQuestion('text')">
+                <el-icon><Edit /></el-icon> 填空题
+              </el-button>
+              <el-button type="primary" @click="addNewQuestion('rate')">
+                <el-icon><Star /></el-icon> 评分题
+              </el-button>
             </div>
-            <div class="question-content">
-              <div class="question-header">
-                <div class="question-title">
-                  <span class="question-index">Q{{ index + 1 }}</span>
-                  <el-input 
-                    v-model="question.title" 
-                    placeholder="请输入题目标题"
-                    :disabled="!isQuestionActive(index)"
-                  />
-                  <el-tag size="small" :type="question.required ? 'danger' : 'info'">
-                    {{ question.required ? '必答' : '选答' }}
-                  </el-tag>
-                </div>
-                <div class="question-actions">
-                  <el-button-group>
-                    <el-button size="small" type="primary" plain @click="moveQuestion(index, -1)" :disabled="index === 0">
-                      <i class="el-icon-arrow-up"></i>
-                    </el-button>
-                    <el-button size="small" type="primary" plain @click="moveQuestion(index, 1)" :disabled="index === questions.length - 1">
-                      <i class="el-icon-arrow-down"></i>
-                    </el-button>
-                    <el-button size="small" type="danger" plain @click="removeQuestion(index)">
-                      <i class="el-icon-delete"></i>
-                    </el-button>
-                  </el-button-group>
-                </div>
-              </div>
-
-              <!-- 根据题型显示不同的内容编辑组件 -->
-              <div class="question-body">
-                <!-- 单选题 -->
-                <template v-if="question.type === 'radio'">
-                  <div
-                    v-for="(option, optIndex) in question.options"
-                    :key="optIndex"
-                    class="question-option"
-                  >
-                    <el-radio disabled :label="option.value">
-                      <el-input 
-                        v-model="option.label" 
-                        placeholder="请输入选项"
-                        :disabled="!isQuestionActive(index)"
-                      />
-                    </el-radio>
-                    <el-button
-                      size="mini"
-                      type="danger"
-                      icon="el-icon-delete"
-                      circle
-                      @click="removeOption(question, optIndex)"
-                      v-if="isQuestionActive(index) && question.options.length > 2"
-                    ></el-button>
-                  </div>
-                  <div class="option-actions" v-if="isQuestionActive(index)">
-                    <el-button size="small" type="primary" plain @click="addOption(question)">
-                      添加选项
-                    </el-button>
-                  </div>
-                </template>
-
-                <!-- 多选题 -->
-                <template v-else-if="question.type === 'checkbox'">
-                  <div
-                    v-for="(option, optIndex) in question.options"
-                    :key="optIndex"
-                    class="question-option"
-                  >
-                    <el-checkbox disabled :label="option.value">
-                      <el-input 
-                        v-model="option.label" 
-                        placeholder="请输入选项"
-                        :disabled="!isQuestionActive(index)"
-                      />
-                    </el-checkbox>
-                    <el-button
-                      size="mini"
-                      type="danger"
-                      icon="el-icon-delete"
-                      circle
-                      @click="removeOption(question, optIndex)"
-                      v-if="isQuestionActive(index) && question.options.length > 2"
-                    ></el-button>
-                  </div>
-                  <div class="option-actions" v-if="isQuestionActive(index)">
-                    <el-button size="small" type="primary" plain @click="addOption(question)">
-                      添加选项
-                    </el-button>
-                  </div>
-                </template>
-
-                <!-- 填空题 -->
-                <template v-else-if="question.type === 'text'">
-                  <el-input
-                    type="textarea"
-                    :rows="3"
-                    disabled
-                    placeholder="此处填写答案"
-                  ></el-input>
-                </template>
-
-                <!-- 评分题 -->
-                <template v-else-if="question.type === 'rate'">
-                  <div class="rate-preview">
-                    <el-rate 
-                      v-model="question.defaultValue" 
-                      :max="question.max || 5"
-                      :disabled="!isQuestionActive(index)"
-                    ></el-rate>
-                  </div>
-                  <div class="rate-config" v-if="isQuestionActive(index)">
-                    <el-form-item label="最高分">
-                      <el-input-number v-model="question.max" :min="3" :max="10"></el-input-number>
-                    </el-form-item>
-                  </div>
-                </template>
-              </div>
+            
+            <div class="drag-tip">
+              <el-divider>
+                <span>或</span>
+              </el-divider>
+              <p>从左侧拖拽题型到此区域</p>
             </div>
           </div>
+
+          <VueDraggable 
+            v-model="questions" 
+            v-bind="dragOptions"
+            class="questions-list"
+            item-key="id"
+            @start="onDragStart"
+            @end="onDragEnd"
+            v-else
+          >
+            <template #item="{element: question, index}">
+              <div class="question-item" :class="{ 'is-active': activeQuestionIndex === index }">
+                <div class="question-drag-handle" @mousedown="selectQuestion(index)">
+                  <el-icon><Rank /></el-icon>
+                </div>
+                <div class="question-content">
+                  <div class="question-header">
+                    <div class="question-title">
+                      <span class="question-index">Q{{ index + 1 }}</span>
+                      <el-input 
+                        v-model="question.title" 
+                        placeholder="请输入题目标题"
+                        :disabled="!isQuestionActive(index)"
+                      />
+                      <el-tag size="small" :type="question.required ? 'danger' : 'info'">
+                        {{ question.required ? '必答' : '选答' }}
+                      </el-tag>
+                    </div>
+                    <div class="question-actions">
+                      <el-button-group>
+                        <el-button size="small" type="primary" plain @click="moveQuestion(index, -1)" :disabled="index === 0">
+                          <el-icon><ArrowUp /></el-icon>
+                        </el-button>
+                        <el-button size="small" type="primary" plain @click="moveQuestion(index, 1)" :disabled="index === questions.length - 1">
+                          <el-icon><ArrowDown /></el-icon>
+                        </el-button>
+                        <el-button size="small" type="danger" plain @click="removeQuestion(index)">
+                          <el-icon><Delete /></el-icon>
+                        </el-button>
+                      </el-button-group>
+                    </div>
+                  </div>
+
+                  <!-- 根据题型显示不同的内容编辑组件 -->
+                  <div class="question-body">
+                    <!-- 单选题 -->
+                    <template v-if="question.type === 'radio'">
+                      <div
+                        v-for="(option, optIndex) in question.options"
+                        :key="optIndex"
+                        class="question-option"
+                      >
+                        <el-radio disabled :label="option.value">
+                          <el-input 
+                            v-model="option.label" 
+                            placeholder="请输入选项"
+                            :disabled="!isQuestionActive(index)"
+                          />
+                        </el-radio>
+                        <el-button
+                          size="mini"
+                          type="danger"
+                          circle
+                          @click="removeOption(question, optIndex)"
+                          v-if="isQuestionActive(index) && question.options.length > 2"
+                        >
+                          <el-icon><Delete /></el-icon>
+                        </el-button>
+                      </div>
+                      <div class="option-actions" v-if="isQuestionActive(index)">
+                        <el-button size="small" type="primary" plain @click="addOption(question)">
+                          添加选项
+                        </el-button>
+                      </div>
+                    </template>
+
+                    <!-- 多选题 -->
+                    <template v-else-if="question.type === 'checkbox'">
+                      <div
+                        v-for="(option, optIndex) in question.options"
+                        :key="optIndex"
+                        class="question-option"
+                      >
+                        <el-checkbox disabled :label="option.value">
+                          <el-input 
+                            v-model="option.label" 
+                            placeholder="请输入选项"
+                            :disabled="!isQuestionActive(index)"
+                          />
+                        </el-checkbox>
+                        <el-button
+                          size="mini"
+                          type="danger"
+                          circle
+                          @click="removeOption(question, optIndex)"
+                          v-if="isQuestionActive(index) && question.options.length > 2"
+                        >
+                          <el-icon><Delete /></el-icon>
+                        </el-button>
+                      </div>
+                      <div class="option-actions" v-if="isQuestionActive(index)">
+                        <el-button size="small" type="primary" plain @click="addOption(question)">
+                          添加选项
+                        </el-button>
+                      </div>
+                    </template>
+
+                    <!-- 填空题 -->
+                    <template v-else-if="question.type === 'text'">
+                      <el-input
+                        type="textarea"
+                        :rows="3"
+                        disabled
+                        placeholder="此处填写答案"
+                      ></el-input>
+                    </template>
+
+                    <!-- 评分题 -->
+                    <template v-else-if="question.type === 'rate'">
+                      <div class="rate-preview">
+                        <el-rate 
+                          v-model="question.defaultValue" 
+                          :max="question.max || 5"
+                          :disabled="!isQuestionActive(index)"
+                        ></el-rate>
+                      </div>
+                      <div class="rate-config" v-if="isQuestionActive(index)">
+                        <el-form-item label="最高分">
+                          <el-input-number v-model="question.max" :min="3" :max="10"></el-input-number>
+                        </el-form-item>
+                      </div>
+                    </template>
+                  </div>
+                  
+                  <!-- 添加下一题按钮 -->
+                  <div class="add-next-question" v-if="isQuestionActive(index)">
+                    <el-divider content-position="center">
+                      <el-dropdown @command="addQuestionAfter($event, index)">
+                        <el-button type="primary" size="small" plain>
+                          添加下一题 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                        </el-button>
+                        <template #dropdown>
+                          <el-dropdown-menu>
+                            <el-dropdown-item v-for="type in questionTypes" :key="type.type" :command="type.type">
+                              <el-icon><component :is="type.icon" /></el-icon> {{ type.label }}
+                            </el-dropdown-item>
+                          </el-dropdown-menu>
+                        </template>
+                      </el-dropdown>
+                    </el-divider>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </VueDraggable>
         </div>
       </div>
 
@@ -223,13 +337,23 @@
               ></el-input>
             </el-form-item>
             <el-form-item label="问卷分类">
-              <el-select v-model="surveyInfo.categoryId" placeholder="请选择分类">
+              <el-select 
+                v-model="surveyInfo.categoryId" 
+                placeholder="请选择分类"
+                filterable
+                :loading="categoryLoading"
+              >
                 <el-option
                   v-for="category in categoryOptions"
                   :key="category.id"
                   :label="category.name"
                   :value="category.id"
-                ></el-option>
+                >
+                  <div style="display: flex; align-items: center;">
+                    <el-icon style="margin-right: 8px; color: #409EFF;"><Folder /></el-icon>
+                    {{ category.name }}
+                  </div>
+                </el-option>
               </el-select>
             </el-form-item>
             <el-form-item label="是否发布">
@@ -243,18 +367,93 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, defineComponent } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+// 使用组件导入方式
+import VueDraggable from 'vuedraggable';
+// 导入Element Plus图标
+import { 
+  Check, 
+  Tickets, 
+  Edit, 
+  Star, 
+  Delete, 
+  ArrowUp, 
+  ArrowDown, 
+  Plus, 
+  Rank,
+  Folder,
+  View,
+  Document,
+  ArrowLeft,
+  QuestionFilled
+} from '@element-plus/icons-vue';
+
+// 类型定义
+interface QuestionType {
+  type: string;
+  label: string;
+  icon: any; // 修改为组件引用
+}
+
+interface QuestionOption {
+  value: string;
+  label: string;
+}
+
+interface BaseQuestion {
+  id: string;
+  type: string;
+  title: string;
+  required: boolean;
+  showIndex: boolean;
+}
+
+interface RadioQuestion extends BaseQuestion {
+  type: 'radio';
+  options: QuestionOption[];
+}
+
+interface CheckboxQuestion extends BaseQuestion {
+  type: 'checkbox';
+  options: QuestionOption[];
+}
+
+interface TextQuestion extends BaseQuestion {
+  type: 'text';
+  placeholder: string;
+}
+
+interface RateQuestion extends BaseQuestion {
+  type: 'rate';
+  max: number;
+  defaultValue: number;
+}
+
+type Question = RadioQuestion | CheckboxQuestion | TextQuestion | RateQuestion;
+
+interface Category {
+  id: string;
+  name: string;
+}
+
+interface SurveyInfo {
+  id: string;
+  title: string;
+  description: string;
+  categoryId: string;
+  isPublished: boolean;
+}
 
 // 定义问卷题型
-const questionTypes = [
-  { type: 'radio', label: '单选题', icon: 'el-icon-circle-check' },
-  { type: 'checkbox', label: '多选题', icon: 'el-icon-tickets' },
-  { type: 'text', label: '填空题', icon: 'el-icon-edit-outline' },
-  { type: 'rate', label: '评分题', icon: 'el-icon-star-on' }
+const questionTypes: QuestionType[] = [
+  { type: 'radio', label: '单选题', icon: Check },
+  { type: 'checkbox', label: '多选题', icon: Tickets },
+  { type: 'text', label: '填空题', icon: Edit },
+  { type: 'rate', label: '评分题', icon: Star }
 ];
 
 const router = useRouter();
@@ -263,7 +462,7 @@ const surveyId = route.params.id as string;
 const isEdit = !!surveyId;
 
 // 问卷基本信息
-const surveyInfo = reactive({
+const surveyInfo = reactive<SurveyInfo>({
   id: surveyId || '',
   title: '',
   description: '',
@@ -272,22 +471,37 @@ const surveyInfo = reactive({
 });
 
 // 分类选项
-const categoryOptions = ref([]);
+const categoryOptions = ref<Category[]>([]);
+
+// 新增变量
+const categoryLoading = ref(false);
 
 // 问题列表
-const questions = ref([]);
+const questions = ref<Question[]>([]);
 
 // 当前活动的问题索引
-const activeQuestionIndex = ref(-1);
-const activeQuestion = computed(() => {
+const activeQuestionIndex = ref<number>(-1);
+const activeQuestion = computed<Question | null>(() => {
   if (activeQuestionIndex.value >= 0 && activeQuestionIndex.value < questions.value.length) {
     return questions.value[activeQuestionIndex.value];
   }
   return null;
 });
 
+// 拖拽配置
+const dragOptions = {
+  animation: 200,
+  handle: '.question-drag-handle',
+  ghostClass: 'ghost-question',
+  chosenClass: 'chosen-question'
+};
+
+// 是否正在拖拽
+const isDragging = ref(false);
+
 // 获取分类列表
 const fetchCategories = () => {
+  categoryLoading.value = true;
   axios.get('/api/survey-categories')
     .then(response => {
       let categoriesData = null;
@@ -300,16 +514,23 @@ const fetchCategories = () => {
       }
       
       if (Array.isArray(categoriesData)) {
-        categoryOptions.value = categoriesData;
+        categoryOptions.value = categoriesData as Category[];
+        
+        // 如果是新建模式，并且有分类，自动选择第一个分类
+        if (!isEdit && categoryOptions.value.length > 0 && !surveyInfo.categoryId) {
+          surveyInfo.categoryId = categoryOptions.value[0].id;
+        }
       } else {
         console.error('无法识别的分类列表格式');
         categoryOptions.value = [];
       }
+      categoryLoading.value = false;
     })
     .catch(err => {
       console.error('获取分类失败', err);
       ElMessage.error('获取分类失败');
       categoryOptions.value = [];
+      categoryLoading.value = false;
     });
 };
 
@@ -330,7 +551,7 @@ const initSurveyData = () => {
           
           // 填充问题列表
           if (Array.isArray(surveyData.questions)) {
-            questions.value = surveyData.questions;
+            questions.value = surveyData.questions as Question[];
           }
         }
       })
@@ -344,13 +565,13 @@ const initSurveyData = () => {
     surveyInfo.description = '';
     surveyInfo.isPublished = false;
     
-    // 创建一个默认问题
-    addNewQuestion('radio');
+    // 不再自动创建默认题目，让用户自己选择添加
+    questions.value = [];
   }
 };
 
 // 创建一个新问题
-const addNewQuestion = (type) => {
+const addNewQuestion = (type: string) => {
   const newQuestion = createQuestionByType(type);
   questions.value.push(newQuestion);
   // 自动选中新添加的问题
@@ -358,8 +579,8 @@ const addNewQuestion = (type) => {
 };
 
 // 根据类型创建问题
-const createQuestionByType = (type) => {
-  const baseQuestion = {
+const createQuestionByType = (type: string): Question => {
+  const baseQuestion: BaseQuestion = {
     id: uuidv4(),
     type,
     title: '',
@@ -369,9 +590,18 @@ const createQuestionByType = (type) => {
   
   switch (type) {
     case 'radio':
+      return {
+        ...baseQuestion,
+        type: 'radio',
+        options: [
+          { value: '1', label: '选项1' },
+          { value: '2', label: '选项2' }
+        ]
+      };
     case 'checkbox':
       return {
         ...baseQuestion,
+        type: 'checkbox',
         options: [
           { value: '1', label: '选项1' },
           { value: '2', label: '选项2' }
@@ -380,31 +610,43 @@ const createQuestionByType = (type) => {
     case 'text':
       return {
         ...baseQuestion,
+        type: 'text',
         placeholder: '请输入'
       };
     case 'rate':
       return {
         ...baseQuestion,
+        type: 'rate',
         max: 5,
         defaultValue: 0
       };
     default:
-      return baseQuestion;
+      // 默认返回单选题
+      return {
+        ...baseQuestion,
+        type: 'radio',
+        options: [
+          { value: '1', label: '选项1' },
+          { value: '2', label: '选项2' }
+        ]
+      };
   }
 };
 
 // 选择问题
-const selectQuestion = (index) => {
-  activeQuestionIndex.value = index;
+const selectQuestion = (index: number) => {
+  if (!isDragging.value) {
+    activeQuestionIndex.value = index;
+  }
 };
 
 // 判断问题是否被选中
-const isQuestionActive = (index) => {
+const isQuestionActive = (index: number) => {
   return activeQuestionIndex.value === index;
 };
 
 // 移除问题
-const removeQuestion = (index) => {
+const removeQuestion = (index: number) => {
   ElMessageBox.confirm('确定要删除此题目吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
@@ -421,7 +663,7 @@ const removeQuestion = (index) => {
 };
 
 // 移动问题位置
-const moveQuestion = (index, direction) => {
+const moveQuestion = (index: number, direction: number) => {
   const newIndex = index + direction;
   if (newIndex < 0 || newIndex >= questions.value.length) return;
   
@@ -434,7 +676,7 @@ const moveQuestion = (index, direction) => {
 };
 
 // 添加选项
-const addOption = (question) => {
+const addOption = (question: RadioQuestion | CheckboxQuestion) => {
   if (!question.options) question.options = [];
   const newOptionIndex = question.options.length + 1;
   question.options.push({
@@ -444,7 +686,7 @@ const addOption = (question) => {
 };
 
 // 移除选项
-const removeOption = (question, optionIndex) => {
+const removeOption = (question: RadioQuestion | CheckboxQuestion, optionIndex: number) => {
   if (question.options.length <= 2) {
     ElMessage.warning('至少保留两个选项');
     return;
@@ -522,15 +764,45 @@ const goBack = () => {
   router.back();
 };
 
-// 拖拽相关方法
-const handleDragStart = (event, typeInfo) => {
-  event.dataTransfer.setData('type', typeInfo.type);
+// 在指定位置后添加问题
+const addQuestionAfter = (type: string, index: number) => {
+  const newQuestion = createQuestionByType(type);
+  // 在指定位置后插入新问题
+  questions.value.splice(index + 1, 0, newQuestion);
+  // 自动选中新添加的问题
+  activeQuestionIndex.value = index + 1;
 };
 
-const handleDrop = (event) => {
-  const type = event.dataTransfer.getData('type');
-  if (type) {
-    addNewQuestion(type);
+// 拖拽相关方法
+const handleDragStart = (event: DragEvent, typeInfo: QuestionType) => {
+  if (event.dataTransfer) {
+    event.dataTransfer.setData('type', typeInfo.type);
+  }
+};
+
+const handleDrop = (event: DragEvent) => {
+  if (event.dataTransfer) {
+    const type = event.dataTransfer.getData('type');
+    if (type) {
+      addNewQuestion(type);
+    }
+  }
+};
+
+// 拖拽开始事件
+const onDragStart = () => {
+  isDragging.value = true;
+};
+
+// 拖拽结束事件
+const onDragEnd = () => {
+  isDragging.value = false;
+  // 更新活动索引，因为题目顺序可能已经变化
+  if (activeQuestion.value) {
+    const newIndex = questions.value.findIndex(q => q.id === activeQuestion.value?.id);
+    if (newIndex !== -1) {
+      activeQuestionIndex.value = newIndex;
+    }
   }
 };
 
@@ -542,46 +814,76 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .survey-editor-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   background-color: #f5f7fa;
 }
 
 .editor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   padding: 16px 20px;
   background-color: #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-  z-index: 10;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  margin-bottom: 20px;
+}
+
+.content-section {
+  margin-bottom: 12px;
+}
+
+.title-meta-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 16px;
   
-  .title-section {
-    width: 60%;
-    
-    .title-input {
-      margin-bottom: 8px;
-      font-size: 18px;
-      font-weight: bold;
-    }
-    
-    .description-input {
-      width: 100%;
-    }
+  .title-input {
+    flex: 1;
+    font-size: 16px;
+    max-width: 38%;
   }
   
-  .button-group {
+  .meta-controls {
     display: flex;
-    gap: 10px;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
   }
+}
+
+.category-section, .publish-section {
+  display: flex;
+  align-items: center;
+}
+
+.category-select {
+  width: 180px;
+}
+
+.label {
+  margin-right: 8px;
+  color: #606266;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.description-area {
+  margin-bottom: 0;
+}
+
+.action-section {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #ebeef5;
 }
 
 .editor-main {
   display: flex;
   flex: 1;
   overflow: hidden;
+  height: calc(100% - 174px); /* 调整高度计算以适应新的顶部布局 */
   
   .component-panel {
     width: 200px;
@@ -621,7 +923,7 @@ onMounted(() => {
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
           }
           
-          i {
+          .el-icon {
             font-size: 20px;
             margin-bottom: 4px;
             color: #409EFF;
@@ -650,19 +952,60 @@ onMounted(() => {
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        height: 300px;
+        height: 400px;
         background-color: #fff;
         border: 2px dashed #dcdfe6;
-        border-radius: 4px;
-        color: #909399;
+        border-radius: 8px;
+        color: #606266;
+        padding: 20px;
         
-        i {
-          font-size: 48px;
-          margin-bottom: 16px;
+        .big-icon {
+          font-size: 56px;
+          margin-bottom: 24px;
+          color: #409EFF;
         }
         
-        p {
-          margin-bottom: 16px;
+        h3 {
+          font-size: 18px;
+          font-weight: 500;
+          margin: 0 0 8px;
+          color: #303133;
+        }
+        
+        .tip-desc {
+          margin: 0 0 24px;
+          font-size: 14px;
+          color: #909399;
+        }
+        
+        .empty-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px;
+          justify-content: center;
+          margin-bottom: 32px;
+          
+          .el-button {
+            min-width: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            
+            .el-icon {
+              margin-right: 4px;
+            }
+          }
+        }
+        
+        .drag-tip {
+          width: 80%;
+          text-align: center;
+          
+          p {
+            margin-top: 12px;
+            font-size: 14px;
+            color: #909399;
+          }
         }
       }
       
@@ -688,7 +1031,8 @@ onMounted(() => {
           border-bottom-left-radius: 4px;
           cursor: move;
           
-          i {
+          .el-icon {
+            font-size: 16px;
             color: #909399;
           }
         }
@@ -748,6 +1092,11 @@ onMounted(() => {
           }
         }
       }
+      
+      .add-next-question {
+        margin-top: 12px;
+        text-align: center;
+      }
     }
   }
   
@@ -765,5 +1114,21 @@ onMounted(() => {
       color: #333;
     }
   }
+}
+
+/* 拖拽相关样式 */
+.ghost-question {
+  opacity: 0.5;
+  background: #c8ebfb;
+  border: 1px dashed #409EFF;
+}
+
+.chosen-question {
+  box-shadow: 0 0 10px 0 rgba(64, 158, 255, 0.5);
+}
+
+.questions-list {
+  width: 100%;
+  min-height: 10px; /* 确保空列表也有空间可以拖放 */
 }
 </style>

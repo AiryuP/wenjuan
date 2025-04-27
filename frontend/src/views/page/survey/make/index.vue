@@ -1,58 +1,56 @@
 <template>
-  <div class="survey-query-container">
-    
-    <!-- 查询条件表单 -->
-    <el-form :model="queryForm" ref="queryFormRef" label-width="100px" class="query-form">
-      <el-row :gutter="20">
-        <el-col :span="8">
+  <div class="survey-make-container">
+    <!-- 顶部搜索区域 -->
+    <div class="header-panel">
+      <div class="panel-header">
+        <el-icon><Search /></el-icon> 搜索条件
+      </div>
+      <el-form :model="queryForm" ref="queryFormRef" layout="inline" class="search-form">
+        <div class="form-items">
           <el-form-item label="问卷名称">
-            <el-input v-model="queryForm.title" placeholder="请输入问卷名称关键词" clearable></el-input>
+            <el-input
+              v-model="queryForm.title"
+              placeholder="搜索问卷名称"
+              clearable
+              class="form-input"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
           </el-form-item>
-        </el-col>
-        <el-col :span="8">
+          
           <el-form-item label="问卷分类">
-            <el-select v-model="queryForm.categoryId" placeholder="请选择问卷分类" clearable style="width: 100%">
+            <el-select v-model="queryForm.categoryId" placeholder="选择分类" clearable class="form-select">
               <el-option
                 v-for="item in categoryOptions"
                 :key="item.id"
                 :label="item.name"
                 :value="item.id"
-              ></el-option>
+              >
+                <div style="display: flex; align-items: center;">
+                  <el-icon style="margin-right: 8px; color: #409EFF;"><Folder /></el-icon>
+                  {{ item.name }}
+                </div>
+              </el-option>
             </el-select>
           </el-form-item>
-        </el-col>
-        <el-col :span="8">
+          
           <el-form-item label="问卷状态">
-            <el-select v-model="queryForm.status" placeholder="请选择问卷状态" clearable style="width: 100%">
+            <el-select v-model="queryForm.status" placeholder="选择状态" clearable class="form-select">
               <el-option :value="0" label="草稿"></el-option>
               <el-option :value="1" label="已发布"></el-option>
               <el-option :value="2" label="已关闭"></el-option>
             </el-select>
           </el-form-item>
-        </el-col>
-      </el-row>
-      
-      <el-row :gutter="20">
-        <el-col :span="8">
-          <el-form-item label="标签">
-            <el-select
-              v-model="queryForm.tags"
-              multiple
-              collapse-tags
-              collapse-tags-tooltip
-              placeholder="请选择标签"
-              style="width: 100%"
-            >
-              <el-option
-                v-for="item in tagOptions"
-                :key="item.id"
-                :label="item.name"
-                :value="item.id"
-              ></el-option>
+          
+          <el-form-item label="收集状态">
+            <el-select v-model="queryForm.isCollecting" placeholder="收集状态" clearable class="form-select">
+              <el-option :value="true" label="正在收集"></el-option>
+              <el-option :value="false" label="已停止收集"></el-option>
             </el-select>
           </el-form-item>
-        </el-col>
-        <el-col :span="10">
+          
           <el-form-item label="创建时间">
             <el-date-picker
               v-model="queryForm.dateRange"
@@ -62,89 +60,159 @@
               end-placeholder="结束日期"
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
-              style="width: 100%"
+              style="width: 240px"
             ></el-date-picker>
           </el-form-item>
-        </el-col>
-        <el-col :span="6">
-          <el-form-item label="是否收集">
-            <el-select v-model="queryForm.isCollecting" placeholder="请选择" clearable style="width: 100%">
-              <el-option :value="true" label="正在收集"></el-option>
-              <el-option :value="false" label="已停止收集"></el-option>
-            </el-select>
-          </el-form-item>
-        </el-col>
-      </el-row>
-      
-      <el-row>
-        <el-col :span="24" class="query-buttons">
-          <el-button type="primary" @click="handleQuery" :loading="loading">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-          <el-button type="success" @click="createSurvey">创建问卷</el-button>
-        </el-col>
-      </el-row>
-    </el-form>
-    
-    <!-- 查询结果表格 -->
-    <el-table
-      :data="surveyList"
-      border
-      style="width: 100%; margin-top: 20px"
-      v-loading="loading"
-    >
-      <el-table-column prop="id" label="ID" width="80" />
-      <el-table-column prop="title" label="问卷名称" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="category" label="分类" width="120">
-        <template #default="scope">
-          {{ getCategoryName(scope.row.categoryId) }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="status" label="状态" width="100">
-        <template #default="scope">
-          <el-tag :type="getStatusType(scope.row.status)">
-            {{ getStatusText(scope.row.status) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="isCollecting" label="收集状态" width="100">
-        <template #default="scope">
-          <el-tag :type="scope.row.isCollecting ? 'success' : 'info'">
-            {{ scope.row.isCollecting ? '收集中' : '已停止' }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="respondentCount" label="回复数" width="90" />
-      <el-table-column prop="createdAt" label="创建时间" width="180">
-        <template #default="scope">
-          {{ new Date(scope.row.createdAt).toLocaleString() }}
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="280" fixed="right">
-        <template #default="scope">
-          <el-button size="small" @click="editSurvey(scope.row)">编辑</el-button>
-          <el-button size="small" type="primary" @click="previewSurvey(scope.row)">预览</el-button>
-          <el-button 
-            size="small" 
-            :type="scope.row.isCollecting ? 'warning' : 'success'"
-            @click="toggleCollectStatus(scope.row)"
-          >
-            {{ scope.row.isCollecting ? '停止收集' : '开始收集' }}
+        </div>
+        
+        <div class="form-buttons">
+          <el-button type="primary" @click="handleQuery" :loading="loading">
+            <el-icon><Search /></el-icon> 查询
           </el-button>
-          <el-button size="small" type="danger" @click="confirmDelete(scope.row)">删除</el-button>
+          <el-button @click="resetQuery">
+            <el-icon><RefreshLeft /></el-icon> 重置
+          </el-button>
+          <el-button type="success" @click="createSurvey">
+            <el-icon><Plus /></el-icon> 创建问卷
+          </el-button>
+        </div>
+      </el-form>
+    </div>
+    
+    <!-- 问卷列表表格视图 -->
+    <div class="table-container">
+      <div class="panel-header">
+        <el-icon><List /></el-icon> 问卷列表
+        <span class="result-count">共 {{ total }} 条记录</span>
+      </div>
+      
+      <el-table
+        :data="surveyList"
+        style="width: 100%"
+        v-loading="loading"
+        border
+        stripe
+        highlight-current-row
+        :header-cell-style="{ backgroundColor: '#f5f7fa', color: '#606266', fontWeight: 'bold' }"
+      >
+        <el-table-column prop="title" label="问卷名称" min-width="180" show-overflow-tooltip>
+          <template #default="scope">
+            <div class="title-cell">
+              <el-icon><Document /></el-icon>
+              <span class="title-text">{{ scope.row.title }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        
+        <el-table-column prop="categoryId" label="分类" >
+          <template #default="scope">
+            <div class="cell-with-icon">
+              <el-icon><Folder /></el-icon>
+              <span>{{ getCategoryName(scope.row.categoryId) }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        
+        <el-table-column prop="status" label="状态"  align="center">
+          <template #default="scope">
+            <el-tag :type="getStatusType(scope.row.status)" effect="light" round>
+              {{ getStatusText(scope.row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        
+        <el-table-column prop="isCollecting" label="收集状态" align="center">
+          <template #default="scope">
+            <el-tag :type="scope.row.isCollecting ? 'success' : 'info'" effect="light" round>
+              <el-icon class="status-icon">
+                <VideoPlay v-if="scope.row.isCollecting" />
+                <Mute v-else />
+              </el-icon>
+              {{ scope.row.isCollecting ? '收集中' : '已停止' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        
+        <el-table-column prop="respondentCount" label="回复数"  align="center">
+          <template #default="scope">
+            <div class="response-count">
+              <span class="count-number">{{ scope.row.respondentCount }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        
+        <el-table-column prop="createdAt" label="创建时间" >
+          <template #default="scope">
+            <div class="cell-with-icon">
+              <el-icon><Calendar /></el-icon>
+              <span>{{ formatDate(scope.row.createdAt) }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        
+        <el-table-column label="操作" width="360" fixed="right">
+          <template #default="scope">
+            <div class="table-actions">
+              <el-tooltip content="编辑问卷" placement="top">
+                <el-button size="small" type="primary" plain @click="editSurvey(scope.row)">
+                  <el-icon><Edit /></el-icon> 编辑
+                </el-button>
+              </el-tooltip>
+              
+              <el-tooltip content="预览问卷" placement="top">
+                <el-button size="small" type="info" plain @click="previewSurvey(scope.row)">
+                  <el-icon><View /></el-icon> 预览
+                </el-button>
+              </el-tooltip>
+              
+              <el-tooltip :content="scope.row.isCollecting ? '停止收集' : '开始收集'" placement="top">
+                <el-button 
+                  size="small" 
+                  :type="scope.row.isCollecting ? 'warning' : 'success'"
+                  plain
+                  @click="toggleCollectStatus(scope.row)"
+                >
+                  <el-icon>
+                    <Mute v-if="scope.row.isCollecting" />
+                    <VideoPlay v-else />
+                  </el-icon>
+                  {{ scope.row.isCollecting ? '停止' : '开始' }}
+                </el-button>
+              </el-tooltip>
+              
+              <el-tooltip content="删除问卷" placement="top">
+                <el-button size="small" type="danger" plain @click="confirmDelete(scope.row)">
+                  <el-icon><Delete /></el-icon> 删除
+                </el-button>
+              </el-tooltip>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+      
+      <el-empty 
+        v-if="surveyList.length === 0 && !loading" 
+        description="暂无数据，请尝试调整筛选条件或新建问卷"
+        :image-size="200"
+      >
+        <template #image>
+          <el-icon style="font-size: 60px; color: #909399;"><DocumentRemove /></el-icon>
         </template>
-      </el-table-column>
-    </el-table>
+        <el-button type="primary" @click="createSurvey">创建问卷</el-button>
+      </el-empty>
+    </div>
     
     <!-- 分页 -->
-    <div class="pagination">
+    <div class="pagination-container">
       <el-pagination
-        v-model="currentPage"
+        :current-page="currentPage"
         :page-size="pageSize"
         :page-sizes="[10, 20, 50, 100]"
         layout="total, sizes, prev, pager, next, jumper"
         :total="total"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
+        background
       ></el-pagination>
     </div>
   </div>
@@ -155,12 +223,29 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
+import { 
+  Search, 
+  Plus, 
+  Edit, 
+  View, 
+  Delete, 
+  Folder, 
+  User, 
+  Calendar, 
+  RefreshLeft,
+  ArrowDown,
+  VideoPlay,
+  Mute,
+  Document,
+  DocumentRemove,
+  List
+} from '@element-plus/icons-vue'
 
 const router = useRouter()
 const queryFormRef = ref()
 const loading = ref(false)
 const currentPage = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(10) // 修改默认显示数量适合表格视图
 const total = ref(0)
 
 // 分类选项
@@ -209,6 +294,12 @@ const queryForm = reactive({
 
 // 问卷列表数据
 const surveyList = ref<SurveyItem[]>([])
+
+// 格式化日期
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString();
+}
 
 // 获取分类列表
 const fetchCategories = () => {
@@ -270,7 +361,7 @@ const fetchSurveys = () => {
   setTimeout(() => {
     try {
       // 模拟数据
-      const mockData = Array(total.value > 20 ? 20 : total.value).fill(0).map((_, index) => ({
+      const mockData = Array(total.value > pageSize.value ? pageSize.value : total.value).fill(0).map((_, index) => ({
         id: index + 1,
         title: `测试问卷${index + 1}`,
         categoryId: Math.floor(Math.random() * 3) + 1,
@@ -400,39 +491,224 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.survey-query-container {
+.survey-make-container {
   padding: 20px;
+  background-color: #f5f7fa;
+  // min-height: 100vh;
+  height: 100%;
   
-  .query-header {
+  .page-title {
     margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
     
     h2 {
-      margin: 0;
-      font-size: 20px;
+      font-size: 22px;
+      font-weight: 600;
+      color: #303133;
+      margin: 0 0 8px 0;
+      display: flex;
+      align-items: center;
+      
+      .el-icon {
+        margin-right: 8px;
+        font-size: 24px;
+        color: #409EFF;
+      }
     }
-  }
-  
-  .query-form {
-    background-color: #f8f9fa;
-    padding: 20px;
-    border-radius: 4px;
-    margin-bottom: 20px;
-  }
-  
-  .query-buttons {
-    display: flex;
-    justify-content: center;
-    margin-top: 10px;
     
-    .el-button {
-      margin: 0 10px;
+    .title-desc {
+      font-size: 14px;
+      color: #606266;
     }
   }
   
-  .pagination {
-    margin-top: 20px;
+  .header-panel {
+    margin-bottom: 20px;
+    background-color: #fff;
+    padding: 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+    
+    .panel-header {
+      display: flex;
+      align-items: center;
+      padding: 16px 20px;
+      background-color: #f5f7fa;
+      border-bottom: 1px solid #ebeef5;
+      font-size: 15px;
+      font-weight: 600;
+      color: #303133;
+      
+      .el-icon {
+        margin-right: 8px;
+        color: #409EFF;
+      }
+    }
+    
+    .search-form {
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      
+      .form-items {
+        display: flex;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+        gap: 16px;
+        
+        .el-form-item {
+          margin-bottom: 0;
+          margin-right: 0;
+        }
+        
+        .form-input, .form-select {
+          width: 200px;
+        }
+      }
+      
+      .form-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        
+        .el-button {
+          min-width: 100px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          
+          .el-icon {
+            margin-right: 8px;
+          }
+        }
+      }
+    }
+  }
+  
+  .table-container {
+    background-color: #fff;
+    padding: 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    margin-bottom: 20px;
+    overflow: hidden;
+    height: calc(100% - 250px);
+    display: flex;
+    flex-direction: column;
+    
+    .panel-header {
+      display: flex;
+      align-items: center;
+      padding: 16px 20px;
+      background-color: #f5f7fa;
+      border-bottom: 1px solid #ebeef5;
+      font-size: 15px;
+      font-weight: 600;
+      color: #303133;
+      
+      .el-icon {
+        margin-right: 8px;
+        color: #409EFF;
+      }
+      
+      .result-count {
+        margin-left: auto;
+        font-size: 13px;
+        font-weight: normal;
+        color: #606266;
+      }
+    }
+    
+    .title-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      
+      .el-icon {
+        color: #409EFF;
+      }
+      
+      .title-text {
+        font-weight: 500;
+      }
+    }
+    
+    .cell-with-icon {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      
+      .el-icon {
+        font-size: 14px;
+        color: #409EFF;
+      }
+    }
+    
+    .status-icon {
+      margin-right: 4px;
+    }
+    
+    .response-count {
+      .count-number { 
+        border-radius: 10px;
+        padding: 4px 8px;
+        font-size: 12px; 
+        display: inline-block;
+        min-width: 24px;
+        text-align: center;
+      }
+      
+      .el-badge__content {
+        font-size: 12px;
+        padding: 4px 8px;
+      }
+    }
+    
+    .table-actions {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 8px;
+      
+      .el-button {
+        .el-icon {
+          margin-right: 4px;
+        }
+      }
+    }
+    
+    :deep(.el-table) {
+      flex: 1;
+      overflow-y: auto;
+      height: 100%;
+      
+      .el-table__body-wrapper {
+        overflow-y: auto;
+      }
+      
+      .el-table__row {
+        transition: all 0.3s;
+        
+        &:hover {
+          background-color: #f0f7ff !important;
+        }
+      }
+    }
+    
+    .el-empty {
+      padding: 40px 0;
+    }
+  }
+  
+  .pagination-container {
     display: flex;
     justify-content: flex-end;
+    margin-top: 20px;
+    padding: 16px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   }
 }
 </style>
